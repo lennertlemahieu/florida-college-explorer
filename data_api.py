@@ -57,10 +57,17 @@ def fetch_colleges(key, session=None):
     client = session or requests.Session()
     records, page = [], 0
     while True:
-        response = client.get(API, params={
-            "api_key": key, "school.state": "FL", "school.operating": 1,
-            "fields": ",".join(FIELDS.values()), "per_page": 100, "page": page, "sort": "id:asc",
-        }, timeout=45)
+        try:
+            response = client.get(API, params={
+                "api_key": key, "school.state": "FL", "school.operating": 1,
+                "fields": ",".join(FIELDS.values()), "per_page": 100, "page": page, "sort": "id:asc",
+            }, timeout=45)
+        except requests.exceptions.ProxyError:
+            raise RuntimeError("The app could not connect through its network proxy. If started by Codex, stop that instance and run start.ps1 yourself from the downloaded project folder in PowerShell, then retry. Changing the API key will not fix this connection error.") from None
+        except requests.exceptions.Timeout:
+            raise RuntimeError("College Scorecard did not respond within 45 seconds. Retry later; any saved snapshot has been preserved.") from None
+        except requests.exceptions.RequestException:
+            raise RuntimeError("Could not reach College Scorecard. Check the app computer's internet connection or proxy settings, then retry. Any saved snapshot has been preserved.") from None
         if response.status_code != 200:
             raise RuntimeError(f"College Scorecard returned HTTP {response.status_code}. Check your key, connection, or rate limit.")
         payload = response.json()
