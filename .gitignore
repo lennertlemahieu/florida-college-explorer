@@ -1,0 +1,8 @@
+.venv/
+__pycache__/
+.streamlit/secrets.toml
+data/colleges.json
+data/icons/
+.pytest_cache/
+.qa_packages/
+.packages/
