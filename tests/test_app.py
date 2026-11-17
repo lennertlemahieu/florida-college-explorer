@@ -38,16 +38,26 @@ class UITests(unittest.TestCase):
         with patch.object(data_api, "load_snapshot", return_value=None):
             app = AppTest.from_file(str(Path(__file__).resolve().parents[1] / "app.py")).run(timeout=45)
             self.assertEqual(len(app.exception), 0)
-            self.assertIn("Find your place", app.title[0].value)
+            self.assertEqual(app.title[0].value, "Florida Campus Atlas")
 
     def test_loaded_comparison_and_empty_search(self):
         with patch.object(data_api, "load_snapshot", return_value=fixture()):
             app = AppTest.from_file(str(Path(__file__).resolve().parents[1] / "app.py")).run(timeout=45)
             self.assertEqual([e.message for e in app.exception], [])
-            self.assertEqual(app.metric[0].value, "5")
-            comparison = next(w for w in app.multiselect if w.label == "Choose up to three colleges")
-            comparison.set_value(comparison.options[:2]).run(timeout=45)
+            self.assertEqual(app.metric[0].value, "6")
+            app.radio(key="main_section").set_value("Compare").run(timeout=45)
+            first, second, third = [app.selectbox(key=f"compare_school_{i}") for i in range(1, 4)]
+            self.assertEqual([first.value, second.value, third.value], [None, None, None])
+            self.assertEqual(first.options, sorted(first.options, key=str.casefold))
+            first.select("2")
+            second.select("1").run(timeout=45)
             self.assertEqual([e.message for e in app.exception], [])
+            self.assertEqual([h.value for h in app.subheader if h.value.startswith("Synthetic college")],
+                             ["Synthetic college 1", "Synthetic college 0"])
+            app.radio(key="main_section").set_value("Map").run(timeout=45)
+            app.radio(key="main_section").set_value("Compare").run(timeout=45)
+            self.assertEqual(app.selectbox(key="compare_school_1").value, "2")
+            self.assertEqual(app.selectbox(key="compare_school_2").value, "1")
             search = next(w for w in app.text_input if w.label == "School or city")
             search.set_value("nonexistent institution").run(timeout=45)
             self.assertEqual([e.message for e in app.exception], [])
@@ -56,6 +66,7 @@ class UITests(unittest.TestCase):
     def test_acceptance_filter_excludes_missing_when_requested(self):
         with patch.object(data_api, "load_snapshot", return_value=fixture()):
             app = AppTest.from_file(str(Path(__file__).resolve().parents[1] / "app.py")).run(timeout=45)
+            next(w for w in app.checkbox if w.label == "Filter by acceptance rate").check()
             next(w for w in app.slider if w.label == "Acceptance rate range (%)").set_value((20, 40))
             next(w for w in app.button if w.label == "Apply filters").click().run(timeout=45)
             self.assertEqual([e.message for e in app.exception], [])
@@ -66,13 +77,19 @@ class UITests(unittest.TestCase):
         with patch.object(data_api, "load_snapshot", return_value=fixture()), patch("assets.overrides", return_value=enrichment):
             app = AppTest.from_file(str(Path(__file__).resolve().parents[1] / "app.py")).run(timeout=45)
             next(w for w in app.multiselect if w.label == "Athletics division / association").set_value(["NCAA Division II"])
+            for label in ["Filter by tuition", "Filter by acceptance rate"]:
+                next(w for w in app.checkbox if w.label == label).check()
             next(w for w in app.number_input if w.label == "Maximum annual tuition ($)").set_value(7000)
             next(w for w in app.slider if w.label == "Acceptance rate range (%)").set_value((20, 40))
             next(w for w in app.button if w.label == "Apply filters").click().run(timeout=45)
             self.assertEqual([e.message for e in app.exception], [])
             self.assertEqual(app.metric[0].value, "1")
-            self.assertEqual(app.dataframe[0].value["name"].tolist(), ["Synthetic college 2"])
-            self.assertEqual(len(next(w for w in app.multiselect if w.label == "Choose up to three colleges").options), 1)
+            cards = next(node.proto.body for node in app.get("html") if '<section class="college-grid"' in node.proto.body)
+            self.assertEqual(cards.count('<details class="college-card">'), 1)
+            self.assertIn("Synthetic college 2", cards)
+            self.assertIn("Undergraduate enrollment", cards)
+            app.radio(key="main_section").set_value("Compare").run(timeout=45)
+            self.assertEqual(app.selectbox(key="compare_school_1").options, ["Synthetic college 2"])
 
     def test_additional_outcome_filters(self):
         with patch.object(data_api, "load_snapshot", return_value=fixture()):
@@ -85,7 +102,9 @@ class UITests(unittest.TestCase):
             next(w for w in app.number_input if w.label == "Minimum median earnings ($)").set_value(42000)
             next(w for w in app.button if w.label == "Apply filters").click().run(timeout=45)
             self.assertEqual([e.message for e in app.exception], [])
-            self.assertEqual(app.dataframe[0].value["name"].tolist(), ["Synthetic college 2"])
+            cards = next(node.proto.body for node in app.get("html") if '<section class="college-grid"' in node.proto.body)
+            self.assertEqual(cards.count('<details class="college-card">'), 1)
+            self.assertIn("Synthetic college 2", cards)
 
 if __name__ == "__main__":
     unittest.main()

@@ -1,12 +1,10 @@
-# Florida College Explorer
+# Florida Campus Atlas
 
-A Programming for Data Science capstone: a Streamlit application for exploring Florida colleges on an interactive image-marker map, comparing acceptance and costs, performing EDA, and requesting grounded LLM explanations.
+A Programming for Data Science capstone for exploring Florida colleges on an aerial map, browsing campus-photo cards, comparing schools, and analyzing public College Scorecard data.
 
 ## Run on Windows
 
 Install Python 3.11 or 3.12. Extract the project to a permanent folder, open PowerShell there, and run:
-
-Your requested destination is `C:\Users\lenne\OneDrive - New College of Florida\NCFL\fall_cources\programming\Florida College Explorer`. To copy the extracted project there without overwriting an existing folder, run `powershell -ExecutionPolicy Bypass -File .\SaveToProgramming.ps1` from the extracted folder. Windows denied writing to that location during this build, so it has not already been saved there.
 
 ```powershell
 py -m venv .venv
@@ -19,10 +17,10 @@ Open the local URL Streamlit prints, normally http://localhost:8501. A connectio
 ## Keys and first use
 
 1. Obtain a College Scorecard/data.gov key at https://api.data.gov/signup/. The default `DEMO_KEY` has strict rate limits.
-2. Enter it in the sidebar and click **Fetch / refresh Florida colleges**. All pages are retrieved, normalized, and saved to `data/colleges.json`. Failures preserve the previous snapshot. No fabricated statistics ship with this project.
-3. Click **Load school images**. This attempts to download website icons from each school's own site. Images are cached; unresolvable images get a neutral graduation-cap marker.
-4. For a full school logo, add a direct raster image URL and source to `data/overrides.csv`, using the Scorecard school ID. Click **Load school images** again. School website icons are not claimed to be full school logos. Use the coverage audit to finish and verify all logos before the class demo.
-5. Obtain a Gemini API key at https://aistudio.google.com/apikey. Enter it in **AI insights**, select colleges, and generate a comparison. Model access/availability can change; the model name is editable.
+2. Open **Data and image settings** in the sidebar, enter the key, and click **Fetch / refresh Florida colleges**. The app retrieves and normalizes all pages into a local snapshot at `data/colleges.json`. A failed refresh leaves the previous snapshot available.
+3. In the same settings panel, click **Load school images**. The app caches reviewed logo overrides, school logos it can identify, and website icons. The map uses a graduation cap when an image is unavailable.
+4. To add a logo, enter its direct image URL and source in `data/overrides.csv` using the Scorecard school ID. Use **Load school images** to apply the update. The coverage audit in **Data** lists image types and sources.
+5. For AI comparisons, obtain a Gemini API key at https://aistudio.google.com/apikey and enter it in **AI**. Select colleges and generate a comparison. The model name is editable.
 
 Alternatively, copy `.streamlit/secrets.toml.example` to `.streamlit/secrets.toml` and enter your keys. Environment variables with the same names are supported. Never commit secrets. The AI call is a real direct API integration, independent of any chat subscription; it is disabled until a key is supplied.
 
@@ -36,14 +34,15 @@ NCAA Divisions I/II/III, NAIA, NJCAA, and other affiliations are a separate revi
 - NAIA: https://www.naia.org/explore/schools/
 - NJCAA: https://www.njcaa.org/member_colleges/Directory
 
-The affiliation filter uses entered values. No memberships are prefilled or guessed. Unreviewed schools display **Not verified**, which does not imply no athletic program. Sports can have exceptions to an institution's primary division. Add these records as a team data-acquisition task.
+The filter shows verified affiliation counts before other filters. A school may match more than one association or division, and individual sports may compete at different levels. Schools with no verified affiliation display **Not verified**.
 
 ## Features
 
-- Florida map with image markers, cluster counts, school popups, and fallback markers.
-- Search plus an **Options** button with an **Apply filters** form: tuition range, acceptance-rate range, division/association, city, public/private school type, degree level, undergraduate enrollment, graduation-rate range, maximum median debt, and minimum median earnings.
+- Aerial map with resizable viewing area, clustered college markers, and school popups.
+- Expandable results cards with sourced campus photos where available, school marks, tuition, and other college details.
+- School or city search and a **Filters** panel for athletics affiliation, tuition, acceptance rate, city, ownership, degree level, enrollment, graduation rate, debt, and earnings.
 - Every enabled filter must match. Missing values are excluded only when the corresponding metric filter is enabled; disable that filter to include them. Empty category selections mean all values. The same filtered records drive map markers, comparisons, EDA, AI choices, and downloads.
-- Three-college comparison and CSV export.
+- Three searchable, alphabetical comparison boxes and CSV export of matching colleges.
 - Tuition histogram, acceptance boxplots, tuition/completion and acceptance/completion scatterplots.
 - Descriptive statistics, Pearson correlations with pairwise sample sizes, missingness and IQR outlier audit.
 - Gemini-generated comparisons using only the selected public data, plus an inspectable payload and downloadable response.
@@ -70,6 +69,7 @@ Missing/suppressed values stay missing. Invalid negative non-coordinate measurem
 - `map_view.py`: Leaflet map HTML with clustered image markers.
 - `ai.py`: direct Gemini API call and grounding instructions.
 - `data/overrides.csv`: logo and athletics enrichment manifest.
+- `data/campus_photos.json`: reviewed campus photo URLs and source pages.
 - `tests/test_data.py`: offline API contract/data-quality tests.
 - `PROJECT_REPORT_OUTLINE.md`, `DEMO.md`: submission preparation.
 
@@ -82,19 +82,11 @@ py -m compileall -q app.py data_api.py assets.py ai.py analysis.py
 
 Tests use synthetic fixtures only. They verify scope, missing/suppressed values, invalid rates, completion cohorts, pagination, secret-free snapshots, and preservation after failed refresh. They do not establish real-world data accuracy.
 
-Build-environment limitations: installation and outbound API access were blocked. The source was syntax-checked and ten offline data/UI tests passed using locally available packages. Tests cover onboarding, populated screens, comparison, acceptance filtering, and empty results. Browser rendering, live College Scorecard and Gemini calls, and school image downloads could not be verified here. No complete logo set or athletics dataset has been supplied. Finish those checks before submission.
+The local college snapshot, image cache, and secret settings are excluded from version control. A fresh checkout needs a College Scorecard refresh and image load for its local cache.
 
 ## GitHub collaboration and deployment
 
-Initialize a repository in the extracted folder, then commit using your own configured identity:
-
-```powershell
-git init
-git add .
-git commit -m "Build Florida College Explorer"
-```
-
-Create a GitHub repository and push it using GitHub's instructions. Each teammate should make real contributions and their own commits. Suggested ownership: API/cleaning; logo/athletics enrichment; map/comparison UI; EDA/AI/report. Do not fabricate teammate history.
+Clone the GitHub repository to make changes from a working copy. Keep API keys in local environment variables or Streamlit secrets.
 
 On Streamlit Community Cloud, select the repository, branch, and `app.py`. Add the secrets using the example keys. Requirements are installed from `requirements.txt`. Local snapshot storage is a cache, not durable cloud storage: refresh data after a restart or add a vetted public snapshot to the repository for deployment. Do not commit API keys.
 
