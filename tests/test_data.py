@@ -57,6 +57,7 @@ class DataTests(unittest.TestCase):
         self.assertIsNone(value["tuition_in"])
         self.assertIsNone(value["acceptance"])
         self.assertEqual(data_api.normalize(school(**{"latest.admissions.admission_rate.overall": 0}))["acceptance"], 0)
+        self.assertIsNone(data_api.normalize(school(**{"latest.student.size": 0}))["enrollment"])
 
     def test_completion_uses_correct_cohort(self):
         row = school(**{"school.degrees_awarded.predominant": 2,

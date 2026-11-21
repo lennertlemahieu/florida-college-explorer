@@ -10,7 +10,7 @@ if (Test-Path -LiteralPath $destination) {
     throw "The destination already exists. No files were overwritten: $destination"
 }
 New-Item -ItemType Directory -Path $destination | Out-Null
-$items = @('app.py','data_api.py','analysis.py','assets.py','ai.py','map_view.py',
+$items = @('app.py','data_api.py','analysis.py','assets.py','ai.py','map_view.py','campus_map.py',
     'requirements.txt','README.md','DEMO.md','PROJECT_REPORT_OUTLINE.md',
     'start.ps1','SaveToProgramming.ps1','.gitignore',
     '.streamlit/config.toml','.streamlit/secrets.toml.example','data/overrides.csv',

@@ -6,6 +6,6 @@ Before class: install dependencies, configure keys, fetch a current snapshot, lo
 2. **2–5 min:** Explore the clustered map, open a school popup, and filter tuition and acceptance.
 3. **5–7 min:** Compare three institutions, emphasizing tuition versus total cost and missing admissions data.
 4. **7–10 min:** Show distributions, scatterplots, correlation sample sizes, missingness, and outlier treatment.
-5. **10–12 min:** Trigger the direct LLM API call, inspect the exact payload, and verify two statements.
+5. **10–12 min:** Ask Gemini a question about two selected schools, explain which public figures the app sends, and verify two statements against the comparison table.
 6. **12–14 min:** Explain modules, error handling, GitHub collaboration, and data limitations.
 7. **14–15 min:** Discuss findings and take questions.

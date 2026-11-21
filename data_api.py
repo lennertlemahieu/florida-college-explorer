@@ -7,6 +7,8 @@ from pathlib import Path
 API = "https://api.data.gov/ed/collegescorecard/v1/schools"
 ROOT = Path(__file__).parent
 SNAPSHOT = ROOT / "data" / "colleges.json"
+PROGRAM_CATALOG = ROOT / "data" / "programs.json"
+MASTERS_CREDENTIAL = "5"  # College Scorecard Field of Study CREDLEV
 FIELDS = {
     "id": "id", "name": "school.name", "city": "school.city",
     "state": "school.state", "website": "school.school_url",
@@ -44,6 +46,8 @@ def normalize(row):
     for field in ("acceptance", "graduation"):
         if record[field] is not None and not 0 <= record[field] <= 1:
             record[field] = None
+    if record["enrollment"] == 0:
+        record["enrollment"] = None
     if record["lat"] is not None and not -90 <= record["lat"] <= 90:
         record["lat"] = None
     if record["lon"] is not None and not -180 <= record["lon"] <= 180:
@@ -95,3 +99,30 @@ def load_snapshot():
     if not SNAPSHOT.exists():
         return None
     return json.loads(SNAPSHOT.read_text(encoding="utf-8"))
+
+
+def load_program_catalog():
+    if not PROGRAM_CATALOG.exists():
+        return None
+    return json.loads(PROGRAM_CATALOG.read_text(encoding="utf-8"))
+
+
+def program_matches(catalog, majors, credentials):
+    """Map each matching school to its selected programs and their reported awards."""
+    if not majors:
+        return {}
+    matches = {}
+    for school_id, offerings in catalog["schools"].items():
+        labels = []
+        for major in majors:
+            awards = [code for code in offerings.get(major, ()) if not credentials or code in credentials]
+            if awards:
+                names = ", ".join(credential_label(code, catalog["levels"]) for code in awards)
+                labels.append(f"{catalog['programs'][major]} · {names}")
+        if labels:
+            matches[school_id] = labels
+    return matches
+
+
+def credential_label(code, levels):
+    return {"2": "Associate’s", "3": "Bachelor’s", MASTERS_CREDENTIAL: "Master’s"}.get(code, levels.get(code, code))

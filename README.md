@@ -14,15 +14,19 @@ py -m venv .venv
 
 Open the local URL Streamlit prints, normally http://localhost:8501. A connection is needed to install dependencies, fetch data, download images, and use AI. The college snapshot and downloaded images are cached locally; map tiles still need network access.
 
+On **Interactive Map**, enter a ZIP code, choose a school, and click **Show shortest driving route**. Radius filters use straight-line distance. The route uses the [Valhalla public demo service](https://valhalla.github.io/valhalla/start/introduction/) and starts near the Census ZIP-area center. The app sends the start and school coordinates only when you request a route. The displayed drive time is an estimate.
+
 ## Keys and first use
 
 1. Obtain a College Scorecard/data.gov key at https://api.data.gov/signup/. The default `DEMO_KEY` has strict rate limits.
-2. Open **Data and image settings** in the sidebar, enter the key, and click **Fetch / refresh Florida colleges**. The app retrieves and normalizes all pages into a local snapshot at `data/colleges.json`. A failed refresh leaves the previous snapshot available.
+2. Open **Data & Sources → Data and image settings**, enter the key, and click **Fetch / refresh Florida colleges**. The app retrieves and normalizes all pages into a local snapshot at `data/colleges.json`. A failed refresh leaves the previous snapshot available.
 3. In the same settings panel, click **Load school images**. The app caches reviewed logo overrides, school logos it can identify, and website icons. The map uses a graduation cap when an image is unavailable.
 4. To add a logo, enter its direct image URL and source in `data/overrides.csv` using the Scorecard school ID. Use **Load school images** to apply the update. The coverage audit in **Data** lists image types and sources.
-5. For AI comparisons, obtain a Gemini API key at https://aistudio.google.com/apikey and enter it in **AI**. Select colleges and generate a comparison. The model name is editable.
+5. Ask AI uses Gemini 3.1 Flash-Lite. The app owner can create a [Gemini API key](https://aistudio.google.com/apikey) in a project marked **Free tier** with billing disabled and set `GEMINI_API_KEY` in the app’s Streamlit secrets or environment.
 
-Alternatively, copy `.streamlit/secrets.toml.example` to `.streamlit/secrets.toml` and enter your keys. Environment variables with the same names are supported. Never commit secrets. The AI call is a real direct API integration, independent of any chat subscription; it is disabled until a key is supplied.
+Alternatively, copy `.streamlit/secrets.toml.example` to `.streamlit/secrets.toml` and enter your keys. Environment variables with the same names are supported. Never commit secrets. Gemini API usage is separate from any chat subscription.
+
+For a ranking audit, set `ATLAS_DEVELOPER_MODE = true` in your local Streamlit secrets. Ranked Finder results then include **Check the score calculations**, with each school's priority scores, weights, and total. The student view hides this panel by default.
 
 ## Scope and athletics
 
@@ -40,12 +44,13 @@ The filter shows verified affiliation counts before other filters. A school may 
 
 - Aerial map with resizable viewing area, clustered college markers, and school popups.
 - Expandable results cards with sourced campus photos where available, school marks, tuition, and other college details.
-- School or city search and a **Filters** panel for athletics affiliation, tuition, acceptance rate, city, ownership, degree level, enrollment, graduation rate, debt, and earnings.
-- Every enabled filter must match. Missing values are excluded only when the corresponding metric filter is enabled; disable that filter to include them. Empty category selections mean all values. The same filtered records drive map markers, comparisons, EDA, AI choices, and downloads.
-- Three searchable, alphabetical comparison boxes and CSV export of matching colleges.
+- Find a School shows matches as students set program, credential, school type, tuition, athletics, and distance requirements. The optional ranking step puts relevant filters first and offers up to five priority slots. Weights run from 5 for first place to 1 for fifth.
+- Select **Master’s** in the degree filter to see schools with a reported master’s field. Add a subject under **Programs / majors** to match that subject at the master’s level. Open a school’s details to browse its graduate fields. The June 2026 [College Scorecard Field of Study release](https://ed-public-download.scorecard.network/downloads/Most-Recent-Cohorts-Field-of-Study_06102026.zip) lists 218 distinct master’s fields across 64 of the 124 colleges in the saved snapshot. Tuition and outcomes refer to undergraduate or institution-level cohorts. Check the school’s graduate catalog for exact degree titles and costs.
+- The map and list share Finder requirements and offer additional filters. With a tuition cap, schools with unknown tuition are excluded by default. The acceptance filter includes unreported rates by default. The Map and Data & Sources filters can include schools with unreported programs.
+- Compare up to five schools with Florida medians, a differences toggle, cost highlights, and shortcuts from school cards and the selected school's details on the map page. Matching colleges can be exported as CSV.
 - Tuition histogram, acceptance boxplots, tuition/completion and acceptance/completion scatterplots.
 - Descriptive statistics, Pearson correlations with pairwise sample sizes, missingness and IQR outlier audit.
-- Gemini-generated comparisons using only the selected public data, plus an inspectable payload and downloadable response.
+- Gemini explains selected public school data. The page can show a built-in data summary when AI answers are unavailable.
 - Source/method documentation and image/athletics coverage export.
 
 ## Data and interpretation
@@ -66,12 +71,16 @@ Missing/suppressed values stay missing. Invalid negative non-coordinate measurem
 - `data_api.py`: retrieval, scope filtering, normalization, atomic storage.
 - `assets.py`: sourced logo overrides and bounded website-icon retrieval.
 - `analysis.py`: missingness/outlier audit.
-- `map_view.py`: Leaflet map HTML with clustered image markers.
+- `campus_map.py`: Leaflet map HTML with clustered image markers.
 - `ai.py`: direct Gemini API call and grounding instructions.
 - `data/overrides.csv`: logo and athletics enrichment manifest.
-- `data/campus_photos.json`: reviewed campus photo URLs and source pages.
+- `data/campus_photos.json` maps exact school IDs to campus photos. Reviewed Wikimedia Commons images are bundled in `data/commons_photos/` and include their creator, license, and original file page in the school details.
 - `tests/test_data.py`: offline API contract/data-quality tests.
 - `PROJECT_REPORT_OUTLINE.md`, `DEMO.md`: submission preparation.
+
+### Refresh campus photos
+
+Run `python campus_photos.py --find "Eckerd College"` to list image candidates from the school's English Wikipedia article. Open the Commons file page to check the campus, building, viewpoint, and credit. For an approved image, set the school's entry in `data/campus_photos.json` to `{"commons_file": "Eckerd College Armacost Library.png", "alt": "Eckerd College's Armacost Library across the water"}`. Then run `python campus_photos.py --refresh` and save the updated catalog and thumbnails together. The refresh accepts credited CC BY, CC BY-SA, CC0, and explicitly marked public-domain images. Schools without a suitable photo use their logo tile. UCF uses its logo tile by design.
 
 ## Validation
 
@@ -80,7 +89,7 @@ py -m unittest discover -s tests -v
 py -m compileall -q app.py data_api.py assets.py ai.py analysis.py
 ```
 
-Tests use synthetic fixtures only. They verify scope, missing/suppressed values, invalid rates, completion cohorts, pagination, secret-free snapshots, and preservation after failed refresh. They do not establish real-world data accuracy.
+Data contract tests use synthetic fixtures to check scope, missing values, invalid rates, completion cohorts, pagination, secret-free snapshots, and preservation after a failed refresh. Campus photo tests also verify that bundled Wikimedia images open offline and carry attribution.
 
 The local college snapshot, image cache, and secret settings are excluded from version control. A fresh checkout needs a College Scorecard refresh and image load for its local cache.
 
